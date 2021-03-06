@@ -1,6 +1,6 @@
 package com.luneruniverse.lib.packets;
 
-public class Supplier<T> {
+class Supplier<T> {
 	
 	private T value;
 	
