@@ -3,6 +3,7 @@ package com.luneruniverse.lib.packets;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.reflect.InvocationTargetException;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
@@ -13,12 +14,12 @@ public class Packet {
 	private static final JsonParser parser = new JsonParser();
 	private static long nextId = 0;
 	
-	private final String request;
-	private final JsonObject data;
-	private final long id;
-	private PacketHandler responseHandler;
-	private long responseId;
-	private String error;
+	protected final String request;
+	protected final JsonObject data;
+	protected PacketHandler responseHandler;
+	protected long id;
+	protected long responseId;
+	protected String error;
 	
 	private Packet(String request, JsonObject data, long id, long responseId, PacketHandler responseHandler) {
 		this.responseHandler = responseHandler;
@@ -112,6 +113,50 @@ public class Packet {
 			throw new BadPacketException(e);
 		}
 	}
+	
+	
+	private static <T extends Packet> T copyId(Packet from, T to) {
+		to.id = from.id;
+		to.responseId = from.responseId;
+		to.error = from.error;
+		
+		return to;
+	}
+	
+	public static <T extends Packet> T resolvePacket(Class<T> clazz, Packet packet) {
+		
+		if (!clazz.getName().equals(packet.getRequest()))
+			throw new ClassCastException();
+		
+		if (packet.getData().size() == 0) {
+			try {
+				return copyId(packet, clazz.getConstructor().newInstance());
+			} catch (InstantiationException | IllegalAccessException | IllegalArgumentException
+					| InvocationTargetException | NoSuchMethodException | SecurityException e) {
+				// Continue
+			}
+		}
+		
+		try {
+			return copyId(packet, clazz.getConstructor(JsonObject.class).newInstance(packet.getData()));
+		} catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException
+				| NoSuchMethodException | SecurityException e) {
+			ClassCastException toThrow = new ClassCastException();
+			toThrow.addSuppressed(e);
+			throw toThrow;
+		}
+		
+	}
+	
+	@SuppressWarnings("unchecked")
+	public static Packet resolvePacket(Packet packet) {
+		try {
+			return resolvePacket((Class<? extends Packet>) Class.forName(packet.getRequest()), packet);
+		} catch (ClassNotFoundException e) {
+			throw new ClassCastException();
+		}
+	}
+	
 	
 	@Override
 	public String toString() {

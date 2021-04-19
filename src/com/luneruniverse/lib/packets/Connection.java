@@ -52,8 +52,10 @@ public abstract class Connection {
 							LOG.println("Received packet " + getLogClass() + "- " + incomingPacket);
 						if (incomingPacket.getResponseId() != -1) {
 							if (waitingResponse.containsKey(incomingPacket.getResponseId())) {
-								waitingResponse.get(incomingPacket.getResponseId()).getResponseHandler().handlePacket(incomingPacket, this);
-								waitingResponse.remove(incomingPacket.getResponseId());
+								new Thread(() -> {
+									waitingResponse.get(incomingPacket.getResponseId()).getResponseHandler().handlePacket(incomingPacket, this);
+									waitingResponse.remove(incomingPacket.getResponseId());
+								}).start();
 							}
 							continue;
 						}

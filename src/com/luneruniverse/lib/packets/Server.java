@@ -26,7 +26,9 @@ public class Server {
 					try {
 						ServerConnection connection = new ServerConnection(this, packetHandler, clientSocket);
 						connections.add(connection);
-						connectHandler.handleConnection(connection);
+						new Thread(() -> {
+							connectHandler.handleConnection(connection);
+						}).start();
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
