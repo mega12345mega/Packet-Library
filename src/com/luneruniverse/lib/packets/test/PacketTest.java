@@ -24,7 +24,7 @@ public class PacketTest {
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
-		}, (packet, output) -> {
+		}, (packet, output, wait) -> {
 			if (packet.hasError()) {
 				new ErrorPacketException(packet).printStackTrace();
 				return true;
@@ -40,8 +40,10 @@ public class PacketTest {
 			return false;
 		}, 6666);
 		
-		Client client = new Client((packet, output) -> {
+		Client client = new Client((packet, output, wait) -> {
 			if (packet.getRequest().equals("msg")) {
+				wait.dontWait();
+				
 				try {
 					Packet reply = output.sendMessageWithReply(new Packet("getData", null));
 					packet.reply(new Packet("response", reply.getValue(), null), output);

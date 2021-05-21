@@ -5,13 +5,13 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.InvocationTargetException;
 
+import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
-import com.google.gson.JsonParser;
 
 public class Packet {
 	
-	private static final JsonParser parser = new JsonParser();
+	private static final Gson parser = new Gson();
 	private static long nextId = 0;
 	
 	protected final String request;
@@ -98,7 +98,7 @@ public class Packet {
 			String line = reader.readLine();
 			if (line == null)
 				throw new IOException("Stream closed");
-			JsonObject packet = parser.parse(line).getAsJsonObject();
+			JsonObject packet = parser.fromJson(line, JsonObject.class);
 			String request = packet.get("request").getAsString();
 			JsonObject data = packet.get("data").getAsJsonObject();
 			long id = packet.get("id").getAsLong();

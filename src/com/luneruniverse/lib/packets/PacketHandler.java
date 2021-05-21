@@ -9,5 +9,5 @@ public interface PacketHandler {
 	 * @param output - where to output packets
 	 * @return if the packet was handled
 	 */
-	public boolean handlePacket(Packet packet, Connection output);
+	public boolean handlePacket(Packet packet, Connection output, WaitHandler wait);
 }

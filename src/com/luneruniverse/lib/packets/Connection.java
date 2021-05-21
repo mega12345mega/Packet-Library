@@ -51,22 +51,11 @@ public abstract class Connection {
 						if (LOG != null)
 							LOG.println("Received packet " + getLogClass() + "- " + incomingPacket);
 						if (incomingPacket.getResponseId() != -1) {
-							if (waitingResponse.containsKey(incomingPacket.getResponseId())) {
-								new Thread(() -> {
-									waitingResponse.get(incomingPacket.getResponseId()).getResponseHandler().handlePacket(incomingPacket, this);
-									waitingResponse.remove(incomingPacket.getResponseId());
-								}).start();
-							}
+							if (waitingResponse.containsKey(incomingPacket.getResponseId()))
+								startWaitingThread(incomingPacket, waitingResponse.remove(incomingPacket.getResponseId()).getResponseHandler());
 							continue;
 						}
-						new Thread(() -> {
-							try {
-								if (!handler.handlePacket(incomingPacket, this) && !incomingPacket.hasError())
-									sendMessage(new ErrorPacket("invalid packet type", incomingPacket.getRequest()));
-							} catch (IOException e) {
-								e.printStackTrace();
-							}
-						}).start();
+						startWaitingThread(incomingPacket, handler);
 						
 					} catch (BadPacketException e) {
 						
@@ -87,6 +76,25 @@ public abstract class Connection {
 		});
 		thread.start();
 	}
+	private void startWaitingThread(Packet incomingPacket, PacketHandler handler) {
+		WaitHandler wait = new WaitHandler();
+		Thread thread = new Thread(() -> {
+			try {
+				if (!handler.handlePacket(incomingPacket, this, wait) && !incomingPacket.hasError())
+					sendMessage(new ErrorPacket("invalid packet type", incomingPacket.getRequest()));
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		});
+		thread.start();
+		while (wait.isWaiting() && thread.isAlive()) {
+			try {
+				thread.join(10);
+			} catch (InterruptedException e) {
+				break;
+			}
+		}
+	}
 	
 	public void sendMessage(Packet packet) throws IOException {
 		if (packet.getResponseHandler() != null)
@@ -98,9 +106,9 @@ public abstract class Connection {
 	public Packet sendMessageWithReply(Packet packet) throws IOException {
 		Supplier<Packet> response = new Supplier<>();
 		PacketHandler responseHandler = packet.getResponseHandler();
-		packet.setResponseHandler((responsePacket, output) -> {
+		packet.setResponseHandler((responsePacket, output, wait) -> {
 			if (responseHandler != null)
-				responseHandler.handlePacket(responsePacket, output);
+				responseHandler.handlePacket(responsePacket, output, wait);
 			response.set(responsePacket);
 			return true;
 		});
